@@ -6,12 +6,12 @@ from __future__ import unicode_literals
 import logging
 logger = logging.getLogger(__name__)
 import os, re, time, math, json, string, random, traceback, wget, asyncio, datetime, aiofiles, aiofiles.os, requests, youtube_dl, lyricsgenius, wget
+import yt_dlp
 from config import Config
 from random import choice 
 from pyrogram import Client, filters
 from youtube_search import YoutubeSearch
 from youtubesearchpython import VideosSearch
-from yt_dlp import YoutubeDL
 from database import Database
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message, InlineQuery, InlineQueryResultArticle, InputTextMessageContent
 from pyrogram.errors import FloodWait, InputUserDeactivated, UserIsBlocked, PeerIdInvalid
@@ -156,25 +156,21 @@ async def send_msg(user_id, message):
     except Exception as e:
         return 500, f"{user_id} : {traceback.format_exc()}\n"
 
-@Bot.on_message(filters.command(["song", "sg"]))
-async def song(_, message: Message):
+	
+@Bot.on_message(filters.command(['song']))
+def a(client, message):
     query = ''
     for i in message.command[1:]:
         query += ' ' + str(i)
     print(query)
-    k=await message.reply_text("🔍 **Searching Song...**")
-    ydl_opts = {
-        "format": "bestaudio[ext=m4a]",
-        "geo-bypass": True,
-        "nocheckcertificate": True,
-        "outtmpl": "downloads/%(id)s.%(ext)s",
-        }
+    m = message.reply('`Searching... Please Wait...`')
+    ydl_opts = {"format": "bestaudio[ext=m4a]"}
     try:
         results = []
         count = 0
         while len(results) == 0 and count < 6:
-            if count > 0:
-                await time.sleep(1)
+            if count>0:
+                time.sleep(1)
             results = YoutubeSearch(query, max_results=1).to_dict()
             count += 1
         # results = YoutubeSearch(query, max_results=1).to_dict()
@@ -187,55 +183,46 @@ async def song(_, message: Message):
             views = results[0]["views"]
 
             ## UNCOMMENT THIS IF YOU WANT A LIMIT ON DURATION. CHANGE 1800 TO YOUR OWN PREFFERED DURATION AND EDIT THE MESSAGE (30 minutes cap) LIMIT IN SECONDS
-            # if time_to_seconds(duration) >= 1800:  # duration limit
+            # if time_to_seconds(duration) >= 7000:  # duration limit
             #     m.edit("Exceeded 30mins cap")
             #     return
 
-            performer = f"[Music🎻]" 
+            performer = f"[@mwkBoTs]" 
             thumb_name = f'thumb{message.message_id}.jpg'
             thumb = requests.get(thumbnail, allow_redirects=True)
             open(thumb_name, 'wb').write(thumb.content)
 
         except Exception as e:
             print(e)
-            await k.edit('❌ **Found Literary Noting! \nPlease Try Another Song or Use Correct Spelling.**')
+            m.edit('**👎 Nothing found Retry with another !**')
             return
     except Exception as e:
-        await k.edit(
-            "❗ **Enter An Song Name!** \nFor Example: `/song Alone Marshmellow`"
+        m.edit(
+            "**Enter Song Name with /song Command!**"
         )
         print(str(e))
         return
-    await k.edit("📥 **Downloading Song...**")
+    m.edit("`Bruh... Uploading... Please Wait...`")
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info_dict = ydl.extract_info(link, download=False)
             audio_file = ydl.prepare_filename(info_dict)
             ydl.process_info(info_dict)
-        cap = f'🏷 <b>Title:</b> <a href="{link}">{title}</a>\n⏳ <b>Duration:</b> <code>{duration}</code>\n👀 <b>Views:</b> <code>{views}</code>\n🎧 <b>Requested By:</b> {message.from_user.mention()} \n📤 <b>Uploaded By: <a href="https://t.me/NAZRIYASONGBOT">Music🎻 Downloader</a></b>'
+        rep = f'🎶 <b>Title:</b> <a href="{link}">{title}</a>\n⌚ <b>Duration:</b> <code>{duration}</code>\n📻 <b>Uploaded By:</b> <a href="https://t.me/mwklinks">MwK Song Bot</a>'
         secmul, dur, dur_arr = 1, 0, duration.split(':')
         for i in range(len(dur_arr)-1, -1, -1):
             dur += (int(dur_arr[i]) * secmul)
             secmul *= 60
-        await k.edit("📤 **Uploading Song...**")
-        await message.reply_audio(audio_file, caption=cap, parse_mode='HTML', title=title, duration=dur, performer=performer, thumb=thumb_name)
-        await k.delete()
-        await mp.delete(message)
+        message.reply_audio(audio_file, caption=rep, parse_mode='HTML',quote=False, title=title, duration=dur, performer=performer, thumb=thumb_name)
+        m.delete()
     except Exception as e:
-        await k.edit(f'❌ **An Error Occured!** \n\nError:- {e}')
+        m.edit('**An internal Error Occured, Report This @redbullfed!!**')
         print(e)
-        pass
     try:
         os.remove(audio_file)
         os.remove(thumb_name)
     except Exception as e:
         print(e)
-        pass
-
-
-
-
-	
 
 @Bot.on_inline_query()
 async def inline(client: Client, query: InlineQuery):
